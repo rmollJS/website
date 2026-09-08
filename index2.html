@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VOID//X</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Share+Tech+Mono&display=swap');
+
+:root{
+    --cyan:#00f6ff;
+    --pink:#ff00d4;
+    --purple:#7b00ff;
+    --green:#39ff14;
+    --bg:#020207;
+}
+
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+    background:var(--bg);
+    color:white;
+    font-family:"Share Tech Mono",monospace;
+    overflow-x:hidden;
+    cursor:none;
+}
+
+canvas{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:-20;
+}
+
+#stars{
+    z-index:-19;
+}
+
+#energy{
+    z-index:-18;
+    mix-blend-mode:screen;
+}
+
+#gridCanvas{
+    z-index:-17;
+    opacity:.5;
+}
+
+.noise{
+    position:fixed;
+    inset:-50%;
+    width:200%;
+    height:200%;
+    z-index:9000;
+    pointer-events:none;
+    opacity:.035;
+    background:
+        repeating-radial-gradient(
+            circle at 0 0,
+            #fff 0 1px,
+            transparent 1px 4px
+        );
+    animation:noise .15s steps(2) infinite;
+}
+
+.scanlines{
+    position:fixed;
+    inset:0;
+    z-index:8999;
+    pointer-events:none;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent 0px,
+            transparent 3px,
+            rgba(0,255,255,.025) 4px
+        );
+}
+
+.vignette{
+    position:fixed;
+    inset:0;
+    z-index:8998;
+    pointer-events:none;
+    background:
+        radial-gradient(
+            circle,
+            transparent 35%,
+            rgba(0,0,0,.8) 100%
+        );
+}
+
+/* CURSOR */
+
+.cursor{
+    position:fixed;
+    width:25px;
+    height:25px;
+    border:1px solid var(--cyan);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:99999;
+    box-shadow:
+        0 0 10px var(--cyan),
+        inset 0 0 10px var(--cyan);
+    transition:
+        width .15s,
+        height .15s,
+        border-color .15s;
+}
+
+.cursor:before,
+.cursor:after{
+    content:"";
+    position:absolute;
+    background:var(--cyan);
+    box-shadow:0 0 10px var(--cyan);
+}
+
+.cursor:before{
+    width:50px;
+    height:1px;
+    left:-14px;
+    top:11px;
+}
+
+.cursor:after{
+    width:1px;
+    height:50px;
+    left:11px;
+    top:-14px;
+}
+
+.cursor.hover{
+    width:80px;
+    height:80px;
+    border-color:var(--pink);
+    box-shadow:
+        0 0 30px var(--pink),
+        inset 0 0 20px var(--pink);
+}
+
+.dot{
+    position:fixed;
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    background:white;
+    pointer-events:none;
+    z-index:100000;
+    box-shadow:0 0 15px white;
+}
+
+/* LOADER */
+
+.loader{
+    position:fixed;
+    inset:0;
+    z-index:100000;
+    background:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    transition:1s;
+}
+
+.loader.done{
+    opacity:0;
+    pointer-events:none;
+}
+
+.loader h1{
+    font-family:Orbitron;
+    font-size:clamp(40px,10vw,130px);
+    letter-spacing:15px;
+    color:white;
+    text-shadow:
+        0 0 10px var(--cyan),
+        0 0 30px var(--cyan),
+        0 0 80px var(--pink);
+    animation:loaderGlitch .12s infinite alternate;
+}
+
+.loader p{
+    margin-top:20px;
+    color:var(--green);
+    letter-spacing:5px;
+    font-size:11px;
+}
+
+.progress{
+    width:300px;
+    height:2px;
+    background:#111;
+    margin-top:30px;
+}
+
+.progress span{
+    display:block;
+    width:0;
+    height:100%;
+    background:var(--cyan);
+    box-shadow:0 0 20px var(--cyan);
+    animation:progress 2.8s forwards;
+}
+
+/* NAV */
+
+nav{
+    position:fixed;
+    z-index:5000;
+    top:0;
+    left:0;
+    width:100%;
+    height:80px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 5%;
+    background:rgba(0,0,0,.3);
+    backdrop-filter:blur(15px);
+    border-bottom:1px solid rgba(0,255,255,.15);
+}
+
+.logo{
+    font-family:Orbitron;
+    font-weight:900;
+    letter-spacing:7px;
+    font-size:18px;
+}
+
+.logo b{
+    color:var(--cyan);
+    text-shadow:0 0 20px var(--cyan);
+}
+
+.logo i{
+    color:var(--pink);
+    font-style:normal;
+}
+
+.nav-status{
+    display:flex;
+    gap:25px;
+    align-items:center;
+    color:#777;
+    font-size:10px;
+    letter-spacing:2px;
+}
+
+.online{
+    color:var(--green);
+}
+
+.online:before{
+    content:"";
+    display:inline-block;
+    width:6px;
+    height:6px;
+    background:var(--green);
+    border-radius:50%;
+    margin-right:8px;
+    box-shadow:0 0 10px var(--green);
+    animation:blink 1s infinite;
+}
+
+/* HERO */
+
+.hero{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    perspective:1500px;
+    position:relative;
+    overflow:hidden;
+}
+
+.hero-inner{
+    position:relative;
+    transform-style:preserve-3d;
+}
+
+.kicker{
+    font-size:10px;
+    letter-spacing:10px;
+    color:var(--cyan);
+    margin-bottom:25px;
+    text-shadow:0 0 15px var(--cyan);
+}
+
+.title-wrap{
+    position:relative;
+}
+
+.hero h1{
+    font-family:Orbitron;
+    font-weight:900;
+    font-size:clamp(70px,16vw,230px);
+    letter-spacing:-15px;
+    line-height:.75;
+    position:relative;
+    color:#fff;
+    transform-style:preserve-3d;
+    text-shadow:
+        4px 0 var(--pink),
+        -4px 0 var(--cyan),
+        0 0 50px rgba(255,255,255,.25);
+}
+
+.hero h1:before,
+.hero h1:after{
+    content:"VOID";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+}
+
+.hero h1:before{
+    color:var(--pink);
+    clip-path:polygon(0 8%,100% 8%,100% 22%,0 22%);
+    transform:translateX(12px);
+    animation:glitchA 1.3s infinite;
+}
+
+.hero h1:after{
+    color:var(--cyan);
+    clip-path:polygon(0 67%,100% 67%,100% 82%,0 82%);
+    transform:translateX(-12px);
+    animation:glitchB .9s infinite;
+}
+
+.subtitle{
+    margin:45px auto;
+    max-width:600px;
+    color:#777;
+    line-height:1.8;
+    font-size:14px;
+}
+
+.buttons{
+    display:flex;
+    justify-content:center;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+.btn{
+    position:relative;
+    color:white;
+    text-decoration:none;
+    border:1px solid #333;
+    padding:17px 30px;
+    font-size:10px;
+    letter-spacing:4px;
+    overflow:hidden;
+    transition:.3s;
+    background:rgba(255,255,255,.02);
+}
+
+.btn span{
+    position:relative;
+    z-index:2;
+}
+
+.btn:before{
+    content:"";
+    position:absolute;
+    width:0;
+    height:100%;
+    left:50%;
+    top:0;
+    background:linear-gradient(
+        90deg,
+        var(--cyan),
+        var(--purple),
+        var(--pink)
+    );
+    transition:.4s;
+    transform:translateX(-50%);
+}
+
+.btn:hover:before{
+    width:120%;
+}
+
+.btn:hover{
+    border-color:var(--cyan);
+    box-shadow:
+        0 0 20px rgba(0,255,255,.4),
+        0 0 70px rgba(255,0,212,.15);
+}
+
+/* ORBIT */
+
+.orbit{
+    position:absolute;
+    width:600px;
+    height:600px;
+    border:1px solid rgba(0,255,255,.12);
+    border-radius:50%;
+    transform-style:preserve-3d;
+    animation:orbit 15s linear infinite;
+    pointer-events:none;
+}
+
+.orbit:nth-child(2){
+    width:450px;
+    height:450px;
+    border-color:rgba(255,0,212,.16);
+    animation-duration:11s;
+    animation-direction:reverse;
+}
+
+.orbit:nth-child(3){
+    width:750px;
+    height:250px;
+    border-color:rgba(123,0,255,.2);
+    transform:rotateX(70deg);
+    animation-duration:18s;
+}
+
+/* SECTIONS */
+
+section{
+    min-height:100vh;
+    padding:160px 7%;
+    position:relative;
+}
+
+.section-head{
+    display:flex;
+    align-items:end;
+    justify-content:space-between;
+    margin-bottom:80px;
+}
+
+.section-head h2{
+    font-family:Orbitron;
+    font-size:clamp(35px,7vw,90px);
+    letter-spacing:-5px;
+}
+
+.section-head h2 span{
+    color:var(--cyan);
+    text-shadow:0 0 30px var(--cyan);
+}
+
+.section-head small{
+    color:#555;
+    letter-spacing:3px;
+}
+
+/* HOLOGRAM */
+
+.holo{
+    height:500px;
+    border:1px solid rgba(0,255,255,.2);
+    position:relative;
+    overflow:hidden;
+    background:
+        linear-gradient(
+            110deg,
+            rgba(0,255,255,.03),
+            rgba(255,0,212,.03)
+        );
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transform-style:preserve-3d;
+}
+
+.holo:before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent 0 10px,
+            rgba(0,255,255,.08) 11px,
+            transparent 12px
+        );
+    animation:holoScan 3s linear infinite;
+}
+
+.holo:after{
+    content:"";
+    position:absolute;
+    width:400px;
+    height:400px;
+    border-radius:50%;
+    background:
+        conic-gradient(
+            transparent,
+            var(--cyan),
+            transparent,
+            var(--pink),
+            transparent
+        );
+    filter:blur(60px);
+    opacity:.2;
+    animation:spin 8s linear infinite;
+}
+
+.holo-core{
+    width:250px;
+    height:250px;
+    position:relative;
+    transform-style:preserve-3d;
+    animation:float 4s ease-in-out infinite;
+}
+
+.holo-core div{
+    position:absolute;
+    inset:0;
+    border:1px solid var(--cyan);
+    box-shadow:
+        0 0 20px rgba(0,255,255,.3),
+        inset 0 0 20px rgba(0,255,255,.1);
+}
+
+.holo-core div:nth-child(1){
+    transform:rotateX(60deg);
+}
+
+.holo-core div:nth-child(2){
+    transform:rotateY(60deg);
+    border-color:var(--pink);
+}
+
+.holo-core div:nth-child(3){
+    transform:rotateZ(45deg) rotateX(45deg);
+    border-color:var(--purple);
+}
+
+.core-dot{
+    position:absolute;
+    width:30px;
+    height:30px;
+    background:white;
+    border-radius:50%;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:
+        0 0 20px white,
+        0 0 60px var(--cyan),
+        0 0 120px var(--pink);
+}
+
+/* CARDS */
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:20px;
+}
+
+.card{
+    min-height:380px;
+    padding:35px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.025);
+    position:relative;
+    overflow:hidden;
+    transform-style:preserve-3d;
+    transition:border .3s,box-shadow .3s;
+}
+
+.card:before{
+    content:"";
+    position:absolute;
+    width:150px;
+    height:150px;
+    background:var(--cyan);
+    filter:blur(90px);
+    opacity:.08;
+    right:-50px;
+    top:-50px;
+}
+
+.card:hover{
+    border-color:var(--cyan);
+    box-shadow:
+        0 0 40px rgba(0,255,255,.12),
+        inset 0 0 30px rgba(0,255,255,.03);
+}
+
+.card-num{
+    color:var(--pink);
+    font-size:11px;
+    letter-spacing:3px;
+}
+
+.card-icon{
+    font-size:70px;
+    margin:50px 0 30px;
+    color:var(--cyan);
+    text-shadow:
+        0 0 15px var(--cyan),
+        0 0 50px var(--cyan);
+}
+
+.card h3{
+    font-family:Orbitron;
+    font-size:20px;
+    margin-bottom:15px;
+}
+
+.card p{
+    color:#666;
+    line-height:1.8;
+    font-size:13px;
+}
+
+/* TERMINAL */
+
+.terminal{
+    border:1px solid rgba(57,255,20,.3);
+    background:rgba(0,10,0,.5);
+    box-shadow:0 0 50px rgba(57,255,20,.05);
+    min-height:400px;
+    padding:25px;
+    color:var(--green);
+    font-size:13px;
+    line-height:2;
+    overflow:hidden;
+}
+
+.terminal-top{
+    border-bottom:1px solid rgba(57,255,20,.2);
+    padding-bottom:15px;
+    margin-bottom:20px;
+    color:#555;
+}
+
+.terminal-line{
+    opacity:0;
+    animation:terminalIn .4s forwards;
+}
+
+.cursor-text{
+    display:inline-block;
+    width:8px;
+    height:15px;
+    background:var(--green);
+    animation:blink .7s infinite;
+}
+
+/* METRICS */
+
+.metrics{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px;
+    margin-top:70px;
+}
+
+.metric{
+    border:1px solid rgba(255,255,255,.08);
+    padding:30px;
+    text-align:center;
+    background:rgba(255,255,255,.015);
+}
+
+.metric strong{
+    display:block;
+    font-family:Orbitron;
+    font-size:45px;
+    color:var(--cyan);
+    text-shadow:0 0 20px var(--cyan);
+}
+
+.metric span{
+    color:#555;
+    font-size:9px;
+    letter-spacing:3px;
+}
+
+/* MARQUEE */
+
+.marquee{
+    border-top:1px solid #151515;
+    border-bottom:1px solid #151515;
+    overflow:hidden;
+    white-space:nowrap;
+    padding:30px 0;
+    transform:rotate(-2deg) scale(1.05);
+}
+
+.marquee-inner{
+    display:inline-block;
+    animation:marquee 20s linear infinite;
+}
+
+.marquee b{
+    font-family:Orbitron;
+    font-size:70px;
+    margin-right:60px;
+    color:transparent;
+    -webkit-text-stroke:1px var(--cyan);
+}
+
+.marquee b:nth-child(even){
+    color:var(--pink);
+    -webkit-text-stroke:0;
+    text-shadow:0 0 30px var(--pink);
+}
+
+/* FINAL */
+
+.final{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+}
+
+.final h2{
+    font-family:Orbitron;
+    font-size:clamp(50px,12vw,180px);
+    line-height:.8;
+    letter-spacing:-10px;
+}
+
+.final h2 span{
+    color:transparent;
+    -webkit-text-stroke:2px var(--cyan);
+    text-shadow:
+        0 0 30px rgba(0,255,255,.5);
+    animation:rainbow 4s linear infinite;
+}
+
+/* REVEAL */
+
+.reveal{
+    opacity:0;
+    transform:translateY(100px) scale(.9);
+    filter:blur(10px);
+    transition:
+        1.2s cubic-bezier(.16,1,.3,1);
+}
+
+.reveal.show{
+    opacity:1;
+    transform:none;
+    filter:none;
+}
+
+/* ANIMATIONS */
+
+@keyframes progress{
+    to{width:100%}
+}
+
+@keyframes blink{
+    50%{opacity:0}
+}
+
+@keyframes noise{
+    0%{transform:translate(0,0)}
+    25%{transform:translate(2%,1%)}
+    50%{transform:translate(-1%,3%)}
+    75%{transform:translate(3%,-2%)}
+    100%{transform:translate(0,0)}
+}
+
+@keyframes loaderGlitch{
+    from{transform:skewX(-3deg)}
+    to{transform:skewX(3deg)}
+}
+
+@keyframes glitchA{
+    0%,85%,100%{transform:translateX(10px)}
+    87%{transform:translate(-30px,5px)}
+    89%{transform:translate(25px,-3px)}
+}
+
+@keyframes glitchB{
+    0%,80%,100%{transform:translateX(-10px)}
+    82%{transform:translate(30px,-5px)}
+    84%{transform:translate(-25px,4px)}
+}
+
+@keyframes orbit{
+    from{transform:rotateZ(0) rotateX(70deg)}
+    to{transform:rotateZ(360deg) rotateX(70deg)}
+}
+
+@keyframes spin{
+    to{transform:rotate(360deg)}
+}
+
+@keyframes float{
+    0%,100%{transform:translateY(0) rotateZ(0)}
+    50%{transform:translateY(-25px) rotateZ(180deg)}
+}
+
+@keyframes holoScan{
+    from{transform:translateY(-100%)}
+    to{transform:translateY(100%)}
+}
+
+@keyframes terminalIn{
+    to{
+        opacity:1;
+        transform:translateX(0);
+    }
+    from{
+        opacity:0;
+        transform:translateX(-20px);
+    }
+}
+
+@keyframes marquee{
+    to{transform:translateX(-50%)}
+}
+
+@keyframes rainbow{
+    0%{filter:hue-rotate(0deg)}
+    100%{filter:hue-rotate(360deg)}
+}
+
+@media(max-width:800px){
+
+    .nav-status{
+        display:none;
+    }
+
+    .cards{
+        grid-template-columns:1fr;
+    }
+
+    .metrics{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .hero h1{
+        letter-spacing:-7px;
+    }
+
+    .orbit{
+        width:300px!important;
+        height:300px!important;
+    }
+
+    section{
+        padding:120px 5%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="loader">
+    <h1>VOID//X</h1>
+    <p>INITIALIZING REALITY ENGINE</p>
+    <div class="progress"><span></span></div>
+</div>
+
+<canvas id="stars"></canvas>
+<canvas id="energy"></canvas>
+<canvas id="gridCanvas"></canvas>
+
+<div class="noise"></div>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="cursor"></div>
+<div class="dot"></div>
+
+<nav>
+    <div class="logo">
+        V<b>Ø</b>ID<i>//X</i>
+    </div>
+
+    <div class="nav-status">
+        <span class="online">SYSTEM ONLINE</span>
+        <span id="clock">00:00:00</span>
+        <span>NODE 07</span>
+    </div>
+</nav>
+
+
+<!-- HERO -->
+
+<header class="hero">
+
+    <div class="orbit"></div>
+    <div class="orbit"></div>
+    <div class="orbit"></div>
+
+    <div class="hero-inner">
+
+        <div class="kicker">
+            ◢ UNKNOWN DIMENSION DETECTED ◣
+        </div>
+
+        <div class="title-wrap">
+            <h1>VOID</h1>
+        </div>
+
+        <p class="subtitle">
+            YOU HAVE ENTERED A DIGITAL SPACE THAT WAS NEVER
+            SUPPOSED TO EXIST.
+            <br>
+            <span style="color:#00f6ff">
+                PROCEED AT YOUR OWN RISK.
+            </span>
+        </p>
+
+        <div class="buttons">
+            <a class="btn magnetic" href="#core">
+                <span>ENTER THE VOID</span>
+            </a>
+
+            <a class="btn magnetic" href="#system">
+                <span>ACCESS SYSTEM</span>
+            </a>
+        </div>
+
+    </div>
+
+</header>
+
+
+<!-- MARQUEE -->
+
+<div class="marquee">
+    <div class="marquee-inner">
+        <b>WAKE UP</b>
+        <b>BREAK REALITY</b>
+        <b>NO LIMITS</b>
+        <b>WAKE UP</b>
+        <b>BREAK REALITY</b>
+        <b>NO LIMITS</b>
+    </div>
+</div>
+
+
+<!-- CORE -->
+
+<section id="core">
+
+    <div class="section-head reveal">
+        <h2>THE <span>CORE</span></h2>
+        <small>01 // DIMENSIONAL ENGINE</small>
+    </div>
+
+    <div class="holo reveal">
+
+        <div class="holo-core">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div class="core-dot"></div>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- SYSTEM -->
+
+<section id="system">
+
+    <div class="section-head reveal">
+        <h2>UNKNOWN <span>PROTOCOL</span></h2>
+        <small>02 // ACCESS GRANTED</small>
+    </div>
+
+    <div class="cards">
+
+        <div class="card tilt reveal">
+
+            <div class="card-num">NODE_001</div>
+
+            <div class="card-icon">◈</div>
+
+            <h3>NEURAL VOID</h3>
+
+            <p>
+                A synthetic intelligence floating somewhere
+                between mathematics and consciousness.
+            </p>
+
+        </div>
+
+        <div class="card tilt reveal">
+
+            <div class="card-num">NODE_002</div>
+
+            <div class="card-icon">⟁</div>
+
+            <h3>QUANTUM SHIFT</h3>
+
+            <p>
+                Reality becomes a variable.
+                Every interaction creates another possible universe.
+            </p>
+
+        </div>
+
+        <div class="card tilt reveal">
+
+            <div class="card-num">NODE_003</div>
+
+            <div class="card-icon">✦</div>
+
+            <h3>CHAOS ENGINE</h3>
+
+            <p>
+                Controlled randomness generating patterns
+                that humans were never meant to understand.
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- TERMINAL -->
+
+<section>
+
+    <div class="section-head reveal">
+        <h2>LIVE <span>FEED</span></h2>
+        <small>03 // SYSTEM TELEMETRY</small>
+    </div>
+
+    <div class="terminal reveal">
+
+        <div class="terminal-top">
+            VOID_OS // SECURE TERMINAL
+        </div>
+
+        <div id="terminalText"></div>
+
+        <span class="cursor-text"></span>
+
+    </div>
+
+    <div class="metrics">
+
+        <div class="metric reveal">
+            <strong data-num="99">0</strong>
+            <span>ENERGY LEVEL</span>
+        </div>
+
+        <div class="metric reveal">
+            <strong data-num="847">0</strong>
+            <span>ACTIVE NODES</span>
+        </div>
+
+        <div class="metric reveal">
+            <strong data-num="42">0</strong>
+            <span>DIMENSIONS</span>
+        </div>
+
+        <div class="metric reveal">
+            <strong data-num="0">0</strong>
+            <span>KNOWN LIMITS</span>
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- FINAL -->
+
+<section class="final">
+
+    <div class="reveal">
+
+        <div class="kicker">
+            ◢ TRANSMISSION COMPLETE ◣
+        </div>
+
+        <h2>
+            BREAK<br>
+            <span>REALITY.</span>
+        </h2>
+
+        <div style="margin-top:60px;color:#444;font-size:10px;letter-spacing:4px;">
+            THERE IS NO EXIT
+        </div>
+
+    </div>
+
+</section>
+
+
+<script>
+
+/* =========================================
+   BASIC
+========================================= */
+
+const cursor = document.querySelector(".cursor");
+const dot = document.querySelector(".dot");
+
+let mx=innerWidth/2;
+let my=innerHeight/2;
+let cx=mx;
+let cy=my;
+
+document.addEventListener("mousemove",e=>{
+    mx=e.clientX;
+    my=e.clientY;
+
+    dot.style.left=mx+"px";
+    dot.style.top=my+"px";
+});
+
+function cursorLoop(){
+
+    cx+=(mx-cx)*.18;
+    cy+=(my-cy)*.18;
+
+    cursor.style.left=cx+"px";
+    cursor.style.top=cy+"px";
+
+    requestAnimationFrame(cursorLoop);
+}
+
+cursorLoop();
+
+document.querySelectorAll("a,.card,.holo").forEach(el=>{
+    el.addEventListener("mouseenter",()=>{
+        cursor.classList.add("hover");
+    });
+
+    el.addEventListener("mouseleave",()=>{
+        cursor.classList.remove("hover");
+    });
+});
+
+
+/* =========================================
+   LOADER
+========================================= */
+
+window.addEventListener("load",()=>{
+
+    setTimeout(()=>{
+        document.querySelector(".loader")
+            .classList.add("done");
+    },3000);
+
+});
+
+
+/* =========================================
+   CLOCK
+========================================= */
+
+function clock(){
+
+    const d=new Date();
+
+    document.getElementById("clock").textContent =
+        d.toLocaleTimeString("de-DE");
+
+}
+
+setInterval(clock,1000);
+clock();
+
+
+/* =========================================
+   STAR FIELD
+========================================= */
+
+const starsCanvas=document.getElementById("stars");
+const sctx=starsCanvas.getContext("2d");
+
+let W,H;
+
+function resize(){
+
+    W=innerWidth;
+    H=innerHeight;
+
+    starsCanvas.width=W;
+    starsCanvas.height=H;
+
+    energy.width=W;
+    energy.height=H;
+
+    gridCanvas.width=W;
+    gridCanvas.height=H;
+}
+
+const energy=document.getElementById("energy");
+const ectx=energy.getContext("2d");
+
+const gridCanvas=document.getElementById("gridCanvas");
+const gctx=gridCanvas.getContext("2d");
+
+resize();
+addEventListener("resize",resize);
+
+const stars=[];
+
+for(let i=0;i<900;i++){
+
+    stars.push({
+        x:(Math.random()-.5)*W,
+        y:(Math.random()-.5)*H,
+        z:Math.random()*W,
+        p:Math.random()*Math.PI*2
+    });
+
+}
+
+function starLoop(){
+
+    sctx.fillStyle="rgba(0,0,5,.35)";
+    sctx.fillRect(0,0,W,H);
+
+    const cx=W/2;
+    const cy=H/2;
+
+    stars.forEach(s=>{
+
+        s.z-=2;
+
+        if(s.z<1){
+            s.z=W;
+            s.x=(Math.random()-.5)*W;
+            s.y=(Math.random()-.5)*H;
+        }
+
+        const sx=s.x/s.z*W+cx;
+        const sy=s.y/s.z*W+cy;
+
+        const px=s.x/(s.z+2)*W+cx;
+        const py=s.y/(s.z+2)*W+cy;
+
+        const size=Math.max(0,2-s.z/W*2);
+
+        sctx.beginPath();
+        sctx.moveTo(px,py);
+        sctx.lineTo(sx,sy);
+
+        sctx.strokeStyle=
+            `rgba(0,255,255,${1-s.z/W})`;
+
+        sctx.lineWidth=size;
+
+        sctx.stroke();
+
+    });
+
+    requestAnimationFrame(starLoop);
+}
+
+starLoop();
+
+
+/* =========================================
+   ENERGY WAVES
+========================================= */
+
+let t=0;
+
+function energyLoop(){
+
+    ectx.clearRect(0,0,W,H);
+
+    for(let k=0;k<5;k++){
+
+        ectx.beginPath();
+
+        for(let x=0;x<=W;x+=8){
+
+            const y=
+                H/2+
+                Math.sin(x*.008+t+k)*40+
+                Math.sin(x*.02-t*1.4)*20+
+                Math.sin(x*.002+t*.4)*80;
+
+            if(x===0)
+                ectx.moveTo(x,y);
+            else
+                ectx.lineTo(x,y);
+        }
+
+        const grad=ectx.createLinearGradient(0,0,W,0);
+
+        grad.addColorStop(0,"transparent");
+        grad.addColorStop(.3,
+            k%2 ? "#ff00d4":"#00f6ff");
+        grad.addColorStop(.7,
+            k%2 ? "#7b00ff":"#00f6ff");
+        grad.addColorStop(1,"transparent");
+
+        ectx.strokeStyle=grad;
+        ectx.globalAlpha=.08;
+        ectx.lineWidth=2+k;
+
+        ectx.stroke();
+    }
+
+    ectx.globalAlpha=1;
+
+    t+=.015;
+
+    requestAnimationFrame(energyLoop);
+}
+
+energyLoop();
+
+
+/* =========================================
+   CYBER GRID
+========================================= */
+
+function drawGrid(){
+
+    gctx.clearRect(0,0,W,H);
+
+    const horizon=H*.58;
+
+    gctx.strokeStyle="rgba(0,255,255,.16)";
+    gctx.lineWidth=1;
+
+    for(let i=-20;i<=20;i++){
+
+        const x=W/2+i*70;
+
+        gctx.beginPath();
+        gctx.moveTo(W/2,horizon);
+        gctx.lineTo(x*4-W*1.5,H);
+        gctx.stroke();
+    }
+
+    for(let i=0;i<20;i++){
+
+        const y=horizon+
+            Math.pow(i/20,2)*(H-horizon);
+
+        gctx.beginPath();
+        gctx.moveTo(0,y);
+        gctx.lineTo(W,y);
+        gctx.stroke();
+    }
+
+    requestAnimationFrame(drawGrid);
+}
+
+drawGrid();
+
+
+/* =========================================
+   HERO PARALLAX
+========================================= */
+
+const hero=document.querySelector(".hero");
+const heroInner=document.querySelector(".hero-inner");
+
+hero.addEventListener("mousemove",e=>{
+
+    const x=(e.clientX/W-.5);
+    const y=(e.clientY/H-.5);
+
+    heroInner.style.transform=
+        `rotateY(${x*12}deg)
+         rotateX(${-y*12}deg)
+         translateZ(40px)`;
+});
+
+hero.addEventListener("mouseleave",()=>{
+    heroInner.style.transform="";
+});
+
+
+/* =========================================
+   TILT CARDS
+========================================= */
+
+document.querySelectorAll(".tilt").forEach(card=>{
+
+    card.addEventListener("mousemove",e=>{
+
+        const r=card.getBoundingClientRect();
+
+        const x=e.clientX-r.left;
+        const y=e.clientY-r.top;
+
+        const rx=(y/r.height-.5)*-18;
+        const ry=(x/r.width-.5)*18;
+
+        card.style.transform=
+            `perspective(900px)
+             rotateX(${rx}deg)
+             rotateY(${ry}deg)
+             translateZ(25px)`;
+    });
+
+    card.addEventListener("mouseleave",()=>{
+        card.style.transform="";
+    });
+
+});
+
+
+/* =========================================
+   MAGNETIC BUTTONS
+========================================= */
+
+document.querySelectorAll(".magnetic").forEach(btn=>{
+
+    btn.addEventListener("mousemove",e=>{
+
+        const r=btn.getBoundingClientRect();
+
+        const x=e.clientX-r.left-r.width/2;
+        const y=e.clientY-r.top-r.height/2;
+
+        btn.style.transform=
+            `translate(${x*.25}px,${y*.25}px)`;
+    });
+
+    btn.addEventListener("mouseleave",()=>{
+        btn.style.transform="";
+    });
+
+});
+
+
+/* =========================================
+   SCROLL REVEAL
+========================================= */
+
+const observer=new IntersectionObserver(entries=>{
+
+    entries.forEach(entry=>{
+
+        if(entry.isIntersecting)
+            entry.target.classList.add("show");
+
+    });
+
+},{threshold:.15});
+
+document.querySelectorAll(".reveal")
+    .forEach(el=>observer.observe(el));
+
+
+/* =========================================
+   COUNTERS
+========================================= */
+
+const counterObserver=new IntersectionObserver(entries=>{
+
+    entries.forEach(entry=>{
+
+        if(!entry.isIntersecting)return;
+
+        const el=entry.target;
+        const target=+el.dataset.num;
+
+        let n=0;
+
+        const timer=setInterval(()=>{
+
+            n+=Math.ceil(target/50);
+
+            if(n>=target){
+                n=target;
+                clearInterval(timer);
+            }
+
+            el.textContent=n;
+
+        },30);
+
+        counterObserver.unobserve(el);
+
+    });
+
+});
+
+document.querySelectorAll("[data-num]")
+    .forEach(el=>counterObserver.observe(el));
+
+
+/* =========================================
+   TERMINAL
+========================================= */
+
+const terminalLines=[
+    "> booting VOID_OS...",
+    "> connecting to dimensional network...",
+    "> scanning reality...",
+    "> WARNING: UNKNOWN STRUCTURE DETECTED",
+    "> quantum firewall ............ BYPASSED",
+    "> neural core ................. ONLINE",
+    "> dimensional stability ....... 17%",
+    "> searching for exit .......... FAILED",
+    "> ERROR: REALITY NOT FOUND",
+    "> SYSTEM MESSAGE:",
+    "> YOU ARE ALREADY INSIDE.",
+];
+
+const terminal=document.getElementById("terminalText");
+
+terminalLines.forEach((line,i)=>{
+
+    const div=document.createElement("div");
+
+    div.className="terminal-line";
+    div.textContent=line;
+    div.style.animationDelay=(i*.25)+"s";
+
+    terminal.appendChild(div);
+
+});
+
+
+/* =========================================
+   CLICK EXPLOSION
+========================================= */
+
+document.addEventListener("click",e=>{
+
+    for(let i=0;i<18;i++){
+
+        const p=document.createElement("div");
+
+        p.style.position="fixed";
+        p.style.left=e.clientX+"px";
+        p.style.top=e.clientY+"px";
+        p.style.width="4px";
+        p.style.height="4px";
+        p.style.borderRadius="50%";
+        p.style.background=
+            i%2 ? "#ff00d4":"#00f6ff";
+        p.style.boxShadow=
+            `0 0 12px ${i%2?"#ff00d4":"#00f6ff"}`;
+        p.style.pointerEvents="none";
+        p.style.zIndex="99999";
+
+        document.body.appendChild(p);
+
+        const angle=Math.random()*Math.PI*2;
+        const dist=50+Math.random()*150;
+
+        p.animate([
+            {
+                transform:"translate(-50%,-50%)",
+                opacity:1
+            },
+            {
+                transform:
+                    `translate(
+                        ${Math.cos(angle)*dist}px,
+                        ${Math.sin(angle)*dist}px
+                    )`,
+                opacity:0
+            }
+        ],{
+            duration:700+Math.random()*500,
+            easing:"cubic-bezier(.16,1,.3,1)"
+        });
+
+        setTimeout(()=>p.remove(),1300);
+    }
+
+});
+
+
+/* =========================================
+   RANDOM SCREEN GLITCH
+========================================= */
+
+setInterval(()=>{
+
+    document.body.style.filter=
+        Math.random()>.5
+        ? "hue-rotate(5deg)"
+        : "none";
+
+    setTimeout(()=>{
+        document.body.style.filter="none";
+    },80);
+
+},4000);
+
+
+/* =========================================
+   KONAMI STYLE EASTER EGG
+========================================= */
+
+let sequence="";
+
+document.addEventListener("keydown",e=>{
+
+    sequence+=e.key.toLowerCase();
+
+    if(sequence.length>12)
+        sequence=sequence.slice(-12);
+
+    if(sequence.includes("void")){
+
+        document.body.style.animation=
+            "rainbow 1s linear infinite";
+
+        setTimeout(()=>{
+            document.body.style.animation="";
+        },3000);
+
+        sequence="";
+    }
+
+});
+
+</script>
+
+</body>
+</html>
